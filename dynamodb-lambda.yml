@@ -46,12 +46,10 @@ Resources:
                 Resource: !GetAtt UsersTable.Arn
               - Effect: Allow
                 Action:
+                  - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: arn:aws:logs:*:*:*
-                Condition:
-                  StringLike:
-                    aws:RequestTag/Project: 'NestJS-DynamoDB' # ✅ Restrict logs for cost saving
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${UsersLambdaFunction}/*"
 
   # ---------------------------------------------------------------------------------------------------
 
@@ -116,7 +114,7 @@ Resources:
                           response = { statusCode: 400, body: JSON.stringify({ message: 'Unsupported method' }) };
                   }
               } catch (error) {
-                  response = { statusCode: 500, body: JSON.stringify({ message: error.message }) };
+                  response = { statusCode: 500, body: JSON.stringify({ message: `Error: ${error.message}` }) };
               }
               
               return response;
@@ -143,6 +141,27 @@ Resources:
           - PUT
           - DELETE
 
+  ApiGatewayInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ApiGatewayInvokeLambdaRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: APIGatewayInvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt UsersLambdaFunction.Arn
+
   UsersLambdaIntegration:
     Type: AWS::ApiGatewayV2::Integration
     Properties:
@@ -150,6 +169,7 @@ Resources:
       IntegrationType: AWS_PROXY
       IntegrationUri: !GetAtt UsersLambdaFunction.Arn
       PayloadFormatVersion: '2.0'
+      CredentialsArn: !GetAtt ApiGatewayInvokeRole.Arn  # ✅ API Gateway IAM Role
 
   UsersLambdaRoute:
     Type: AWS::ApiGatewayV2::Route

@@ -85,13 +85,14 @@ import { User } from './user.model';
 export class UsersService {
   private readonly apiGatewayUrl =
     process.env.API_GATEWAY_URL ||
-    'https://your-api-id.execute-api.your-region.amazonaws.com/dev/users'; // Replace with your API Gateway URL
+    'https://your-api-id.execute-api.your-region.amazonaws.com/dev'; // Replace with your API Gateway URL
 
   async create(user: User) {
     try {
       const response = await axios.post(this.apiGatewayUrl, user);
       return response.data;
     } catch (error) {
+      // console.log(error);
       throw new HttpException(
         error.response?.data || 'Failed to create user',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -102,8 +103,10 @@ export class UsersService {
   async findAll() {
     try {
       const response = await axios.get(this.apiGatewayUrl);
+      
       return response.data;
     } catch (error) {
+      console.log("aditya" ,error);
       throw new HttpException(
         error.response?.data || 'Failed to fetch users',
         HttpStatus.INTERNAL_SERVER_ERROR,
